@@ -1,3 +1,13 @@
+variable "cluster_up" {
+  type    = "string"
+  default = "0"
+}
+
+variable "nodes_count" {
+  type    = "string"
+  default = "0"
+}
+
 output "cluster_name" {
   value = "sev.k8s.local"
 }
@@ -42,18 +52,17 @@ provider "aws" {
   region = "eu-west-1"
 }
 
-/*
 resource "aws_autoscaling_attachment" "master-eu-west-1b-masters-sev-k8s-local" {
+  count                  = "${var.cluster_up}"
   elb                    = "${aws_elb.api-sev-k8s-local.id}"
   autoscaling_group_name = "${aws_autoscaling_group.master-eu-west-1b-masters-sev-k8s-local.id}"
 }
-*/
 
 resource "aws_autoscaling_group" "master-eu-west-1b-masters-sev-k8s-local" {
   name                 = "master-eu-west-1b.masters.sev.k8s.local"
   launch_configuration = "${aws_launch_configuration.master-eu-west-1b-masters-sev-k8s-local.id}"
-  max_size             = 0
-  min_size             = 0
+  max_size             = "${var.cluster_up}"
+  min_size             = "${var.cluster_up}"
   vpc_zone_identifier  = ["${aws_subnet.eu-west-1b-sev-k8s-local.id}"]
 
   tag = {
@@ -84,8 +93,8 @@ resource "aws_autoscaling_group" "master-eu-west-1b-masters-sev-k8s-local" {
 resource "aws_autoscaling_group" "nodes-sev-k8s-local" {
   name                 = "nodes.sev.k8s.local"
   launch_configuration = "${aws_launch_configuration.nodes-sev-k8s-local.id}"
-  max_size             = 0
-  min_size             = 0
+  max_size             = "${var.nodes_count}"
+  min_size             = "${var.nodes_count}"
   vpc_zone_identifier  = ["${aws_subnet.eu-west-1b-sev-k8s-local.id}"]
 
   tag = {
@@ -140,10 +149,9 @@ resource "aws_ebs_volume" "b-etcd-main-sev-k8s-local" {
     "k8s.io/role/master" = "1"
   }
 }
-/*
 resource "aws_elb" "api-sev-k8s-local" {
   name = "api-sev-k8s-local-95o548"
-
+  count = "${var.cluster_up}"
   listener = {
     instance_port     = 443
     instance_protocol = "TCP"
@@ -169,7 +177,6 @@ resource "aws_elb" "api-sev-k8s-local" {
     Name              = "api.sev.k8s.local"
   }
 }
-*/
 
 resource "aws_iam_instance_profile" "masters-sev-k8s-local" {
   name = "masters.sev.k8s.local"
@@ -480,4 +487,8 @@ resource "aws_vpc_dhcp_options_association" "sev-k8s-local" {
 
 terraform = {
   required_version = ">= 0.9.3"
+}
+
+output "elb_ip" {
+  value = "${aws_elb.api-sev-k8s-local.*.dns_name}"
 }
