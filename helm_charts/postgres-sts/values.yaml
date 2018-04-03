@@ -1,0 +1,33 @@
+name: pgset
+container:
+  port: 5432
+  name:
+    default: pgset
+    primary: pgset-primary
+    replica: pgset-replica
+  serviceAccount: pgset-sa
+credentials:
+  primary: password
+  root: password
+  user: password
+serviceType: ClusterIP
+image:
+  repository: crunchydata
+  container: crunchy-postgres
+  tag: centos7-10.3-1.8.2
+pv:
+  storage: 400M
+  name: pgset-pv
+pvc:
+  data: pgdata
+  backup: pgbackup
+  storage: 200M
+resources:
+  cpu: 200m
+  memory: 512Mi
+  persistence:
+    storageClass: standard
+    storageClassType: standard
+    accessModes:
+    - ReadWriteMany
+    size: 100m

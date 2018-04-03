@@ -1,0 +1,119 @@
+#volumeClaimTemplates:
+#- metadata:
+#    name: "{{.Values.pvc.data}}"
+#  spec:
+#    accessModes: [ "ReadWriteOnce" ]
+#    resources:
+#      requests:
+#        storage: "{{.Values.pvc.storage}}"
+# - metadata:
+#    name: "{{.Values.pvc.backup}}"
+#  spec:
+#    accessModes: [ "ReadWriteOnce" ]
+#    resources:
+#      requests:
+#        storage: "{{.Values.pvc.storage}}"
+                                                
+
+
+#kind: PersistentVolumeClaim
+#apiVersion: v1
+#metadata:
+#  name: "{{.Values.pvc.data}}"
+#  labels:
+#spec:
+#  accessModes:
+#    - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: "{{.Values.pvc.storage}}"
+#---
+#kind: PersistentVolumeClaim
+#apiVersion: v1
+#metadata:
+#  name: "{{.Values.pvc.backup}}"
+#  labels:
+#spec:
+#  accessModes:
+#    - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: "{{.Values.pvc.storage}}"
+###---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: "{{.Values.container.name.default}}"
+  labels:
+    name: "{{.Values.container.name.default}}"
+    app: "{{.Values.container.name.default}}"
+    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+  annotations:
+    "helm.sh/created": {{.Release.Time.Seconds | quote }}
+spec:
+  serviceName: "{{.Values.container.name.default}}"
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: "{{.Values.container.name.default}}"
+    spec:
+      securityContext:
+       fsGroup: 2000
+       runAsUser: 1000
+       runAsNonRoot: true
+      serviceAccount: "{{.Values.container.serviceAccount}}"
+      containers:
+      - name: {{.Values.container.name.default}}
+        image: "{{.Values.image.repository}}/{{.Values.image.container}}:{{.Values.image.tag}}"
+        ports:
+        - containerPort: {{.Values.container.port}}
+          name: postgres
+        env:
+        - name: PGHOST
+          value: /tmp
+        - name: PG_PRIMARY_USER
+          value: primaryuser
+        - name: PG_MODE
+          value: set
+        - name: PG_PRIMARY_HOST
+          value: "{{.Values.container.name.primary}}"
+        - name: PG_REPLICA_HOST
+          value: "{{.Values.container.name.replica}}"
+        - name: PG_PRIMARY_PORT
+          value: "{{.Values.container.port}}"
+        - name: PG_PRIMARY_PASSWORD
+          value: "{{.Values.credentials.primary}}"
+        - name: PG_USER
+          value: testuser
+        - name: PG_PASSWORD
+          value: "{{.Values.credentials.user}}"
+        - name: PG_DATABASE
+          value: userdb
+        - name: PG_ROOT_PASSWORD
+          value: "{{.Values.credentials.root}}"
+        resources:
+          requests:
+            cpu: {{ .Values.resources.cpu }}
+            memory: {{ .Values.resources.memory }}
+        volumeMounts:
+        - name: "{{.Values.pvc.data}}"
+          mountPath: /pgdata
+        - name: "{{.Values.pvc.backup}}"
+          mountPath: /pgbackup
+          readOnly: true
+  volumeClaimTemplates:
+  - metadata:
+      name: "{{.Values.pvc.data}}"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:        
+       requests:
+         storage: {{.Values.pvc.storage}}
+  - metadata:
+      name: "{{.Values.pvc.backup}}"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+       requests:	
+         storage: {{.Values.pvc.storage}}
